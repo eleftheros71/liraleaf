@@ -1,0 +1,17 @@
+{
+  "name": "LiraLeaf — plant care",
+  "short_name": "LiraLeaf",
+  "description": "Care schedules, reminders, light meter and plant doctor for your plants.",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f4ee",
+  "theme_color": "#2f6b4f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

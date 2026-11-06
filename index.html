@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>LiraLeaf</title>
+  <meta name="description" content="Local-first plant care schedules, reminders, light meter and plant doctor.">
+  <meta name="theme-color" content="#2f6b4f">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="LiraLeaf">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top"><span class="brand">🌿 LiraLeaf</span></header>
+  <main id="main" tabindex="-1"></main>
+  <nav aria-label="Sections">
+    <button data-view="today" aria-label="Today"><span aria-hidden="true">📋</span><span>Today</span></button>
+    <button data-view="plants" aria-label="Plants"><span aria-hidden="true">🪴</span><span>Plants</span></button>
+    <button data-view="sites" aria-label="Sites"><span aria-hidden="true">🏠</span><span>Sites</span></button>
+    <button data-view="tools" aria-label="Tools"><span aria-hidden="true">🔦</span><span>Tools</span></button>
+    <button data-view="settings" aria-label="Settings"><span aria-hidden="true">⚙️</span><span>Settings</span></button>
+  </nav>
+  <dialog id="dialog"></dialog>
+  <div id="toast" role="status" hidden></div>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
