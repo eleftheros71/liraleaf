@@ -8,10 +8,8 @@ import {
   type Advisory,
   type Corridor,
   type DayForecast,
-  type DemandRating,
   type GuideEvent,
   type Source,
-  type SurgeTier,
   type WeeklyGuide,
 } from '../types';
 import { DEFAULT_HUB_BY_CORRIDOR, HUB_IDS } from '../data/hubs';
@@ -23,11 +21,10 @@ const str = (v: unknown, fallback = ''): string => (typeof v === 'string' ? v.tr
 
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
   if (typeof v !== 'string') return fallback;
-  const hit = allowed.find((a) => a.toLowerCase() === v.trim().toLowerCase());
-  return hit ?? fallback;
+  return allowed.find((a) => a.toLowerCase() === v.trim().toLowerCase()) ?? fallback;
 }
 
-function slug(s: string): string {
+export function slug(s: string): string {
   return s
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
@@ -35,33 +32,41 @@ function slug(s: string): string {
     .slice(0, 48);
 }
 
-const SCORE_BY_RATING: Record<DemandRating, number> = { Low: 25, Moderate: 45, High: 65, Peak: 82, Extreme: 95 };
-
-export const TIER_WEIGHT: Record<SurgeTier, number> = { Moderate: 1, High: 2, Peak: 3, Extreme: 4 };
+/** Accepts "19:30", "7:30 PM", "7 pm". Returns HH:MM (24h) or ''. */
+export function parseTime(v: unknown): string {
+  if (typeof v !== 'string') return '';
+  const m = v.trim().match(/^(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)?$/i);
+  if (!m) return '';
+  let h = Number(m[1]);
+  const min = Number(m[2] ?? '0');
+  const ap = m[3]?.toLowerCase().replace(/\./g, '');
+  if (ap === 'pm' && h < 12) h += 12;
+  if (ap === 'am' && h === 12) h = 0;
+  if (h > 23 || min > 59) return '';
+  return `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+}
 
 /**
  * Coerce untrusted model output into a complete WeeklyGuide:
- * exactly 7 days starting at weekOf, unique event ids, valid enums,
- * staging hubs that exist on the map.
+ * exactly 7 days, unique ids, valid enums, known hubs, 24h times.
+ * Events outside the requested week are dropped. Verification is set later.
  */
-export function normalizeGuide(raw: unknown, weekOf: string, corridors: Corridor[]): WeeklyGuide {
+export function normalizeGuide(raw: unknown, weekOf: string, corridors: Corridor[], model: string): WeeklyGuide {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Loose;
   const dates = weekDates(weekOf);
 
   const seen = new Set<string>();
-  const rawEvents = Array.isArray(r.events) ? (r.events as Loose[]) : [];
   const events: GuideEvent[] = [];
-  for (const e of rawEvents) {
+  for (const e of Array.isArray(r.events) ? (r.events as Loose[]) : []) {
     if (!e || typeof e !== 'object') continue;
     const name = str(e.name);
-    if (!name) continue;
-    const corridor = pick(e.corridor, CORRIDORS, 'Other');
     const date = isIsoDate(e.date) && dates.includes(e.date) ? e.date : null;
-    if (!date) continue; // drop events outside the requested week
-    let id = slug(str(e.id) || `${name}-${date}`) || `event-${events.length}`;
+    if (!name || !date) continue;
+    const corridor = pick(e.corridor, CORRIDORS, 'Other');
+    let id = slug(`${name}-${date}`) || `event-${events.length}`;
     while (seen.has(id)) id = `${id}-x`;
     seen.add(id);
-    const hub = str(e.stagingHubId);
+    const hub = str(e.hubId ?? e.stagingHubId);
     const sourceUrl = str(e.sourceUrl);
     events.push({
       id,
@@ -70,57 +75,42 @@ export function normalizeGuide(raw: unknown, weekOf: string, corridors: Corridor
       corridor,
       type: pick(e.type, EVENT_TYPES, 'Other'),
       date,
-      startTime: str(e.startTime, 'TBA'),
-      endTime: str(e.endTime, 'TBA'),
-      pickupTimes: str(e.pickupTimes),
-      dispatchStrategy: str(e.dispatchStrategy),
+      startTime: parseTime(e.startTime),
+      endTime: parseTime(e.endTime),
+      pickupTips: str(e.pickupTips),
       surgeTier: pick(e.surgeTier, SURGE_TIERS, 'Moderate'),
-      expectedAttendance: str(e.expectedAttendance),
-      stagingHubId: HUB_IDS.includes(hub) ? hub : DEFAULT_HUB_BY_CORRIDOR[corridor],
+      attendance: str(e.attendance),
+      hubId: HUB_IDS.includes(hub) ? hub : DEFAULT_HUB_BY_CORRIDOR[corridor],
       sourceUrl: /^https?:\/\//i.test(sourceUrl) ? sourceUrl : '',
+      verification: 'unconfirmed',
+      verificationNote: 'Not checked yet.',
     });
   }
-  events.sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+  events.sort((a, b) => a.date.localeCompare(b.date) || (a.startTime || '99').localeCompare(b.startTime || '99'));
 
   const rawDays = Array.isArray(r.days) ? (r.days as Loose[]) : [];
   const days: DayForecast[] = dates.map((date, i) => {
     const d = rawDays.find((x) => x && x.date === date) ?? rawDays[i] ?? {};
-    const rating = pick(d.demandRating, DEMAND_RATINGS, 'Moderate');
-    const scoreRaw = typeof d.demandScore === 'number' ? d.demandScore : Number(d.demandScore);
-    const score = Number.isFinite(scoreRaw) ? Math.round(Math.min(100, Math.max(0, scoreRaw))) : SCORE_BY_RATING[rating];
     return {
       date,
       dayName: dayName(date),
-      demandRating: rating,
-      demandScore: score,
-      surgeWindow: str(d.surgeWindow, '—'),
+      demandRating: pick(d.demandRating, DEMAND_RATINGS, 'Moderate'),
+      bestWindow: str(d.bestWindow),
       summary: str(d.summary),
-      eventIds: events.filter((e) => e.date === date).map((e) => e.id),
     };
   });
 
-  const gs = (r.globalStrategy && typeof r.globalStrategy === 'object' ? r.globalStrategy : {}) as Loose;
   const advisories: Advisory[] = (Array.isArray(r.advisories) ? (r.advisories as Loose[]) : [])
     .filter((a) => a && str(a.title))
-    .map((a) => ({
-      title: str(a.title),
-      detail: str(a.detail),
-      severity: pick(a.severity, SEVERITIES, 'Info'),
-      corridor: pick(a.corridor, CORRIDORS, 'Other'),
-    }));
+    .slice(0, 12)
+    .map((a) => ({ title: str(a.title), detail: str(a.detail), severity: pick(a.severity, SEVERITIES, 'Info') }));
 
   return {
     weekOf,
     corridors,
     generatedAt: new Date().toISOString(),
-    globalStrategy: {
-      topEarningDay: str(gs.topEarningDay, '—'),
-      topEarningDayReason: str(gs.topEarningDayReason),
-      primaryFocus: str(gs.primaryFocus, '—'),
-      primaryFocusReason: str(gs.primaryFocusReason),
-      surgeAlert: str(gs.surgeAlert, '—'),
-      surgeAlertReason: str(gs.surgeAlertReason),
-    },
+    model,
+    headline: str(r.headline),
     days,
     events,
     advisories,
@@ -137,7 +127,15 @@ export function extractSources(groundingChunks: unknown): Source[] {
     const uri = typeof web?.uri === 'string' ? web.uri : '';
     if (!uri || seen.has(uri)) continue;
     seen.add(uri);
-    out.push({ uri, title: typeof web?.title === 'string' && web.title ? web.title : new URL(uri).hostname });
+    let title = typeof web?.title === 'string' ? web.title : '';
+    if (!title) {
+      try {
+        title = new URL(uri).hostname;
+      } catch {
+        title = uri;
+      }
+    }
+    out.push({ uri, title });
   }
   return out;
 }
@@ -150,4 +148,33 @@ export function parseJsonLoose(text: string): unknown {
   const end = body.lastIndexOf('}');
   if (start < 0 || end <= start) throw new Error('No JSON object in model response');
   return JSON.parse(body.slice(start, end + 1));
+}
+
+const STOP = new Set(['the', 'and', 'with', 'tour', 'live', 'presents', 'orlando', 'night', 'event', 'show', 'from', 'featuring', '2026', '2027']);
+
+/** Significant words of an event name, for matching against a source page. */
+export function keyTerms(name: string): string[] {
+  return [...new Set(name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/))].filter(
+    (w) => w.length >= 3 && !STOP.has(w),
+  );
+}
+
+/** True when most key terms of the name appear in the page text. */
+export function pageMentions(pageText: string, name: string): boolean {
+  const terms = keyTerms(name);
+  if (terms.length === 0) return false;
+  const text = pageText.toLowerCase();
+  const hits = terms.filter((t) => text.includes(t)).length;
+  return hits / terms.length >= (terms.length <= 2 ? 1 : 0.6);
+}
+
+/** Strip tags/scripts so we match visible text, not markup. */
+export function htmlToText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/\s+/g, ' ');
 }

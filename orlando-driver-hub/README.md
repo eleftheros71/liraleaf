@@ -1,81 +1,88 @@
 # Orlando Driver Hub
 
-Personal, single-driver rideshare strategy and live corridor dispatch for Orlando, FL.
-No chat, feeds or community features. One driver, one account.
+A phone-first app for one rideshare driver in Orlando. It answers three questions:
 
-## Stack
+1. **Where should I be right now?** The Now screen ranks the next few hours of demand: MCO arrival banks, park closings, recurring nightlife windows and this week's events. It adds drive time if you share your location, and weighs in your own earnings history once you have a few shifts per area.
+2. **What's happening this week?** Weekly research with Gemini and Google Search. Before an event shows up, the server loads its source page and checks that the page actually mentions it. Every event carries a label: *Confirmed*, *Source found*, *Unconfirmed* or *Added by you*.
+3. **What do my shifts really earn?** Start and stop a shift timer, log earnings, tips, miles and tolls, and see net per hour after gas and wear, by day, time of day and area. Export to CSV for taxes.
 
-- React 19 + TypeScript + Vite + Tailwind CSS v4, lucide-react, motion, recharts
-- `server.ts`: Express on port 3000. Vite middleware in dev, `dist/` in production
-- Gemini (`gemini-3.1-pro-preview`) with Google Search grounding, called **only** from the server
-- Firebase Auth (Google) + Firestore for the profile and cached weekly guides
-- localStorage for offline use in weak-signal areas
+Everything except the weekly research works offline. It installs to the home screen as an app.
 
-## Setup
+## Run it
 
 ```bash
 cd orlando-driver-hub
 npm install
-cp .env.example .env   # fill GEMINI_API_KEY and the VITE_FIREBASE_* values
-npm run dev            # http://localhost:3000
+cp .env.example .env    # add GEMINI_API_KEY (free from Google AI Studio)
+npm run dev             # http://localhost:3000
 ```
 
 Production:
 
 ```bash
 npm run build
-npm start              # serves dist/ on PORT (default 3000)
+npm start               # serves dist/ and the API on PORT (default 3000)
 ```
 
-Without Firebase values the app still runs: guides stay on the device and sign-in is hidden.
-Without `GEMINI_API_KEY` the Staging, MCO, Egress and Shift tools work; only generation fails.
+To install on your phone, the app has to be served over HTTPS (any Node host works: Render, Railway, Fly.io, a VPS). Open it in Safari or Chrome and choose **Add to Home Screen**.
 
-### Firebase
+## Gemini on the free plan
 
-1. Create a project, enable **Authentication → Google** and **Firestore**.
-2. Add your domain (and `localhost`) to Auth → Authorized domains.
-3. Deploy the rules: `npx firebase-tools deploy --only firestore:rules`.
+- The research call runs **only on the server**. The key never reaches the browser.
+- It runs when you tap **Research**, not when you open the app. Results are saved on the phone (and in the cloud if you sign in), so one call per week is normal.
+- `GEMINI_MODELS` is a fallback list. If a model isn't on your plan, or you've hit its free-tier limit, the server tries the next one. The Week screen shows which model produced the research.
+- Google's free tier may use prompts to improve their products. The prompts here are only "find Orlando events for this week".
 
-Data layout (everything else is denied by `firestore.rules`):
+### How events get checked
+
+1. The prompt asks only for events seen in search results, each with its official page.
+2. The server drops anything outside the requested week and normalizes times, venues and hubs.
+3. For each event, the server fetches the source page (public addresses only, 7 s timeout, 1.5 MB cap) and looks for the event name in the visible text.
+   - Found: **Confirmed**.
+   - Page loads but the name isn't there (common with script-heavy ticket sites), or the site appeared in Google's grounding results: **Source found**.
+   - No link or a dead link: **Unconfirmed**. These get a 40% lower score on the Now screen and a warning.
+
+## Protecting your quota
+
+If the server is reachable from the internet, set `APP_ACCESS_CODE` and enter the same code in the app's Settings. The research endpoint also allows at most 10 calls per hour per IP.
+
+## Cloud backup (optional)
+
+Without Firebase settings, all data stays on the phone. Use **Settings → Backup file** now and then.
+
+With Firebase:
+
+1. Create a project and enable **Authentication → Google** and **Firestore**.
+2. Add your domain to Auth → Authorized domains.
+3. Fill the `VITE_FIREBASE_*` values and rebuild.
+4. Deploy the rules: `npx firebase-tools deploy --only firestore:rules`.
 
 | Path | Contents |
 |---|---|
-| `users/{uid}` | `displayName`, `email`, `corridors`, `createdAt`, `updatedAt` |
-| `users/{uid}/guides/guide_{YYYY-MM-DD}` | `ownerUid`, `weekOf`, `corridors`, `guideJson`, `sources`, `createdAt` |
+| `users/{uid}/shifts/{id}` | One shift. Deletes are kept as tombstones so they sync across devices. |
+| `users/{uid}/guides/guide_{YYYY-MM-DD}` | Cached weekly research |
 
-## API
+Everything else is denied by `firestore.rules`.
 
-`POST /api/strategy/generate` with `{ "weekOf": "2026-11-23", "corridors": ["OCCC", "Disney"] }`
-returns `{ guide, sources }`. The model output is validated and normalized server-side
-(7 days, valid enums, known staging hubs). Sources come from
-`groundingMetadata.groundingChunks`, de-duplicated by URL. If the model rejects
-`responseSchema` together with search grounding, the server retries without the schema
-and parses JSON from text. A simple in-memory limit (12 generations/hour per IP) protects your quota.
+## How the Now ranking works
 
-The endpoint has no auth. Keep the server private (localhost, VPN, or behind your host's auth)
-if you deploy it publicly.
+`src/lib/opportunities.ts`, pure and tested. For each demand window in the next 8 hours:
 
-## localStorage keys
+- **Base strength** from the playbook (`src/data/ops.ts`) or the event's demand tier. Unconfirmed events get ×0.6.
+- **Timing**: active now ×1.0, starting within 30 min ×0.95, within 90 min ×0.85, later less.
+- **Your history**: once you have 3+ shifts tagged with that area in that time of day, your net $/hr there vs. your overall average (clamped to 0.8–1.25×).
+- **Distance** (if location is on): drops spots you can't reach before the window closes. Long drives cost up to 35%. It also shows a "leave by" time.
 
-| Key | Purpose |
-|---|---|
-| `orlando_driver_last_guide_v1` | Last loaded guide + sources (Resume Week) |
-| `orlando_driver_bookmarks_v1` | Saved event IDs |
-| `orlando_driver_shift_notes_v1` | Personal shift notes |
-| `orlando_driver_shift_checklist_v1` | Shift leg check-offs |
-| `orlando_driver_costs_v1` | Fuel & tolls and vehicle tier |
-| `orlando_driver_setup_v1` | Week and corridor selection |
+Convention windows at OCCC only count on dates with a convention in your week's events.
 
 ## Data caveats
 
-MCO banks, curb levels, park show times and hub pickup pins in `src/data/` are typical
-patterns, not live feeds. Hours change by season and airport signage changes. Verify before
-you commit to a long deadhead.
+Airport banks, curb levels, park show times and pickup spots in `src/data/` are typical patterns I wrote, not live feeds. Check them against current schedules and signage, and edit the files to match what you see on the road.
 
 ## Scripts
 
-- `npm run dev`: dev server with HMR
-- `npm run build`: client build to `dist/`
+- `npm run dev`: dev server with hot reload
+- `npm run build`: production build to `dist/`
 - `npm start`: production server
 - `npm run typecheck`
-- `npm test`: time windows, guide normalization, citations, earnings math
+- `npm test`: ranking, earnings math, verification matching, time zones

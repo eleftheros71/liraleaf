@@ -1,22 +1,94 @@
 @import "tailwindcss";
 
-@theme {
-  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+/* Theme tokens. Dark is the default for night driving; light helps in full sun. */
+:root {
+  --bg: #0c0d0f;
+  --surface: #16181c;
+  --surface-2: #1f2228;
+  --line: #2a2e35;
+  --ink: #f3f4f6;
+  --ink-2: #b4b9c2;
+  --ink-3: #7d8490;
+  --go: #a3e635;        /* go / money / primary action */
+  --go-ink: #0c0d0f;    /* text on --go */
+  --go-soft: rgba(163, 230, 53, 0.12);
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.12);
+  --bad: #f87171;
+  --bad-soft: rgba(248, 113, 113, 0.12);
+  --info: #7dd3fc;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  --bg: #f4f4f2;
+  --surface: #ffffff;
+  --surface-2: #ececea;
+  --line: #dcdcd8;
+  --ink: #111214;
+  --ink-2: #464a52;
+  --ink-3: #6b707a;
+  --go: #3f6212;
+  --go-ink: #ffffff;
+  --go-soft: rgba(63, 98, 18, 0.1);
+  --warn: #92400e;
+  --warn-soft: rgba(180, 83, 9, 0.1);
+  --bad: #b91c1c;
+  --bad-soft: rgba(185, 28, 28, 0.08);
+  --info: #0369a1;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: light) {
+  :root[data-theme="auto"] {
+    --bg: #f4f4f2;
+    --surface: #ffffff;
+    --surface-2: #ececea;
+    --line: #dcdcd8;
+    --ink: #111214;
+    --ink-2: #464a52;
+    --ink-3: #6b707a;
+    --go: #3f6212;
+    --go-ink: #ffffff;
+    --go-soft: rgba(63, 98, 18, 0.1);
+    --warn: #92400e;
+    --warn-soft: rgba(180, 83, 9, 0.1);
+    --bad: #b91c1c;
+    --bad-soft: rgba(185, 28, 28, 0.08);
+    --info: #0369a1;
+    color-scheme: light;
+  }
+}
+
+@theme inline {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
-  --color-canvas: #0B0F17;
-  --color-panel: #111827;
-  --color-amber: #F59E0B;
-  --color-emerald: #10B981;
-  --color-crimson: #EF4444;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-go: var(--go);
+  --color-go-ink: var(--go-ink);
+  --color-go-soft: var(--go-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --color-info: var(--info);
 }
 
 html, body, #root { min-height: 100%; }
 body {
-  background: var(--color-canvas);
-  color: #E5E7EB;
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
 }
-.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
-::selection { background: rgba(245, 158, 11, 0.35); }
+.num { font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+input, select, textarea { font-size: 16px; } /* stops iOS zoom on focus */
+:focus-visible { outline: 2px solid var(--go); outline-offset: 2px; }

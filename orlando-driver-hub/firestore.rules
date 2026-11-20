@@ -1,9 +1,8 @@
 rules_version = '2';
 
-// Orlando Driver Hub: single-owner data only.
-// users/{uid}                   profile
-// users/{uid}/guides/guide_{d}  cached weekly guide
-// Everything else (chat, feeds, community) is denied.
+// Orlando Driver Hub: one owner per data tree. Everything else is denied.
+//   users/{uid}/guides/guide_{YYYY-MM-DD}   cached weekly research
+//   users/{uid}/shifts/{shiftId}            shift log
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -11,46 +10,45 @@ service cloud.firestore {
       return request.auth != null && request.auth.uid == uid;
     }
 
-    function validCorridors(c) {
-      return c is list && c.size() >= 1 && c.size() <= 5
-        && c.hasOnly(['OCCC', 'Disney', 'Universal', 'Sports/Concerts', 'Other']);
+    function money(v) {
+      return (v is int || v is float) && v >= 0 && v <= 100000;
     }
 
-    function validProfile(d) {
-      return d.keys().hasAll(['displayName', 'email', 'corridors', 'createdAt', 'updatedAt'])
-        && d.keys().hasOnly(['displayName', 'email', 'corridors', 'createdAt', 'updatedAt'])
-        && d.displayName is string && d.displayName.size() <= 120
-        && d.email is string && d.email.size() <= 200
-        && validCorridors(d.corridors)
-        && d.createdAt is timestamp
-        && d.updatedAt == request.time;
-    }
-
-    function validGuide(d, uid, guideId) {
-      return d.keys().hasAll(['ownerUid', 'weekOf', 'corridors', 'guideJson', 'sources', 'createdAt'])
-        && d.keys().hasOnly(['ownerUid', 'weekOf', 'corridors', 'guideJson', 'sources', 'createdAt'])
-        && d.ownerUid == uid
+    function validGuide(d, guideId) {
+      return d.keys().hasOnly(['weekOf', 'guideJson', 'sourcesJson', 'savedAt'])
+        && d.keys().hasAll(['weekOf', 'guideJson', 'sourcesJson', 'savedAt'])
         && d.weekOf is string && d.weekOf.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
         && guideId == 'guide_' + d.weekOf
-        && validCorridors(d.corridors)
-        && d.guideJson is string && d.guideJson.size() > 2 && d.guideJson.size() < 900000
-        && d.sources is list && d.sources.size() <= 60
-        && d.createdAt == request.time;
+        && d.guideJson is string && d.guideJson.size() < 800000
+        && d.sourcesJson is string && d.sourcesJson.size() < 100000
+        && d.savedAt == request.time;
     }
 
-    match /users/{uid} {
-      allow get, delete: if isOwner(uid);
-      allow list: if false;
-      allow create: if isOwner(uid) && validProfile(request.resource.data)
-        && request.resource.data.createdAt == request.time;
-      allow update: if isOwner(uid) && validProfile(request.resource.data)
-        && request.resource.data.createdAt == resource.data.createdAt;
+    function validShift(d) {
+      return d.keys().hasOnly(['start', 'end', 'platform', 'earnings', 'tips', 'trips', 'miles', 'tolls', 'areas', 'notes', 'updatedAt', 'deleted'])
+        && d.keys().hasAll(['start', 'end', 'platform', 'earnings', 'tips', 'trips', 'miles', 'tolls', 'areas', 'notes', 'updatedAt', 'deleted'])
+        && d.start is string && d.start.size() <= 40
+        && d.end is string && d.end.size() <= 40
+        && d.platform in ['Uber', 'Lyft', 'Both', 'Other']
+        && money(d.earnings) && money(d.tips) && money(d.tolls)
+        && d.trips is int && d.trips >= 0 && d.trips <= 500
+        && money(d.miles)
+        && d.areas is list && d.areas.size() <= 6
+        && d.areas.hasOnly(['MCO', 'OCCC', 'Universal', 'Disney', 'Downtown', 'Other'])
+        && d.notes is string && d.notes.size() <= 2000
+        && d.updatedAt is int
+        && d.deleted is bool;
+    }
 
-      match /guides/{guideId} {
-        allow get, delete: if isOwner(uid);
-        allow list: if false;
-        allow create, update: if isOwner(uid) && validGuide(request.resource.data, uid, guideId);
-      }
+    match /users/{uid}/guides/{guideId} {
+      allow get, delete: if isOwner(uid);
+      allow create, update: if isOwner(uid) && validGuide(request.resource.data, guideId);
+    }
+
+    match /users/{uid}/shifts/{shiftId} {
+      allow read: if isOwner(uid);
+      allow create, update: if isOwner(uid) && shiftId.size() <= 64 && validShift(request.resource.data);
+      allow delete: if isOwner(uid);
     }
 
     match /{document=**} {

@@ -1,3 +1,5 @@
+// ---------- Weekly guide (AI research) ----------
+
 export const CORRIDORS = ['OCCC', 'Disney', 'Universal', 'Sports/Concerts', 'Other'] as const;
 export type Corridor = (typeof CORRIDORS)[number];
 
@@ -13,24 +15,14 @@ export type SurgeTier = (typeof SURGE_TIERS)[number];
 export const SEVERITIES = ['Info', 'Caution', 'Critical'] as const;
 export type Severity = (typeof SEVERITIES)[number];
 
-export interface GlobalStrategy {
-  topEarningDay: string;
-  topEarningDayReason: string;
-  primaryFocus: string;
-  primaryFocusReason: string;
-  surgeAlert: string;
-  surgeAlertReason: string;
-}
-
-export interface DayForecast {
-  date: string; // YYYY-MM-DD
-  dayName: string;
-  demandRating: DemandRating;
-  demandScore: number; // 0-100
-  surgeWindow: string;
-  summary: string;
-  eventIds: string[];
-}
+/**
+ * How much we trust an event:
+ * - confirmed: the source page loads and mentions the event
+ * - sourced: has a source link, but we couldn't confirm the page mentions it
+ * - unconfirmed: no working source. Treat as a rumor.
+ * - manual: you added it yourself
+ */
+export type Verification = 'confirmed' | 'sourced' | 'unconfirmed' | 'manual';
 
 export interface GuideEvent {
   id: string;
@@ -39,28 +31,37 @@ export interface GuideEvent {
   corridor: Corridor;
   type: EventType;
   date: string; // YYYY-MM-DD
-  startTime: string;
-  endTime: string;
-  pickupTimes: string;
-  dispatchStrategy: string;
+  startTime: string; // HH:MM 24h, or '' if unknown
+  endTime: string; // HH:MM 24h, or '' if unknown
+  pickupTips: string;
   surgeTier: SurgeTier;
-  expectedAttendance: string;
-  stagingHubId: string;
+  attendance: string;
+  hubId: string;
   sourceUrl: string;
+  verification: Verification;
+  verificationNote: string;
+}
+
+export interface DayForecast {
+  date: string;
+  dayName: string;
+  demandRating: DemandRating;
+  bestWindow: string;
+  summary: string;
 }
 
 export interface Advisory {
   title: string;
   detail: string;
   severity: Severity;
-  corridor: Corridor;
 }
 
 export interface WeeklyGuide {
   weekOf: string;
   corridors: Corridor[];
   generatedAt: string;
-  globalStrategy: GlobalStrategy;
+  model: string;
+  headline: string;
   days: DayForecast[];
   events: GuideEvent[];
   advisories: Advisory[];
@@ -76,4 +77,56 @@ export interface GuideBundle {
   sources: Source[];
 }
 
-export type Page = 'setup' | 'events' | 'staging' | 'flights' | 'egress' | 'shifts' | 'analytics';
+// ---------- Shift log ----------
+
+export const AREAS = ['MCO', 'OCCC', 'Universal', 'Disney', 'Downtown', 'Other'] as const;
+export type Area = (typeof AREAS)[number];
+
+export const PLATFORMS = ['Uber', 'Lyft', 'Both', 'Other'] as const;
+export type Platform = (typeof PLATFORMS)[number];
+
+export interface Shift {
+  id: string;
+  start: string; // ISO timestamp
+  end: string; // ISO timestamp
+  platform: Platform;
+  earnings: number; // fares + bonuses paid out, before tips
+  tips: number;
+  trips: number;
+  miles: number;
+  tolls: number;
+  areas: Area[];
+  notes: string;
+  updatedAt: number; // ms epoch, for sync merging
+  deleted?: boolean; // tombstone so deletes sync across devices
+}
+
+export interface ActiveShift {
+  start: string;
+}
+
+// ---------- Settings ----------
+
+export interface Settings {
+  theme: 'auto' | 'dark' | 'light';
+  mpg: number;
+  gasPrice: number;
+  maintenancePerMile: number;
+  weeklyGoal: number;
+  useLocation: boolean;
+  accessCode: string;
+  corridors: Corridor[];
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  theme: 'auto',
+  mpg: 30,
+  gasPrice: 3.2,
+  maintenancePerMile: 0.1,
+  weeklyGoal: 1200,
+  useLocation: false,
+  accessCode: '',
+  corridors: [...CORRIDORS],
+};
+
+export type Tab = 'now' | 'week' | 'log' | 'earnings' | 'playbook';

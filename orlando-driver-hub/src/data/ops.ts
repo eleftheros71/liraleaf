@@ -1,4 +1,4 @@
-// Static tactical playbooks: MCO flight waves, park egress, shift blueprints.
+// Static playbooks: MCO flight waves, park egress and other recurring demand windows.
 // Times are typical patterns in ET. Always confirm against live schedules.
 
 export interface FlightBank {
@@ -11,6 +11,8 @@ export interface FlightBank {
   queueWait: string;
   carriers: string;
   note: string;
+  /** 0-100 baseline demand strength used by the Now ranking. */
+  strength: number;
 }
 
 export interface Terminal {
@@ -30,10 +32,10 @@ export const TERMINALS: Terminal[] = [
     lat: 28.4316,
     lng: -81.3076,
     banks: [
-      { id: 'a1', label: 'Morning East Coast bank', start: '09:30', end: '11:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '15–30 min', carriers: 'Southwest, Delta, Frontier', note: 'Northeast arrivals with families. XL requests spike.' },
-      { id: 'a2', label: 'Afternoon connector bank', start: '13:30', end: '15:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '25–45 min', carriers: 'Southwest, Spirit', note: 'Lighter bank. Good time to grab lunch in the lot.' },
-      { id: 'a3', label: 'Evening peak bank', start: '17:30', end: '20:00', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '10–25 min', carriers: 'Southwest, Delta, Frontier, Spirit', note: 'Heaviest A-side wave. Disney and I-Drive hotel runs.' },
-      { id: 'a4', label: 'Late redeye-feeder bank', start: '22:00', end: '00:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '5–15 min', carriers: 'Spirit, Frontier, Southwest', note: 'Short queue, long fares to Kissimmee and Lake Nona.' },
+      { id: 'a1', strength: 56, label: 'Morning East Coast bank', start: '09:30', end: '11:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '15–30 min', carriers: 'Southwest, Delta, Frontier', note: 'Northeast arrivals with families. XL requests spike.' },
+      { id: 'a2', strength: 42, label: 'Afternoon connector bank', start: '13:30', end: '15:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '25–45 min', carriers: 'Southwest, Spirit', note: 'Lighter bank. Good time to grab lunch in the lot.' },
+      { id: 'a3', strength: 64, label: 'Evening peak bank', start: '17:30', end: '20:00', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '10–25 min', carriers: 'Southwest, Delta, Frontier, Spirit', note: 'Heaviest A-side wave. Disney and I-Drive hotel runs.' },
+      { id: 'a4', strength: 58, label: 'Late redeye-feeder bank', start: '22:00', end: '00:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, A-side ride-app zone', queueWait: '5–15 min', carriers: 'Spirit, Frontier, Southwest', note: 'Short queue, long fares to Kissimmee and Lake Nona.' },
     ],
   },
   {
@@ -43,10 +45,10 @@ export const TERMINALS: Terminal[] = [
     lat: 28.4309,
     lng: -81.3087,
     banks: [
-      { id: 'b1', label: 'Morning hub bank', start: '09:00', end: '11:00', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '15–30 min', carriers: 'American, United, Alaska', note: 'Business travelers to OCCC on convention weeks.' },
-      { id: 'b2', label: 'Midday bank', start: '12:30', end: '14:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '20–40 min', carriers: 'American, United', note: 'Steady but slow. Stay only if the lot is under 80 cars.' },
-      { id: 'b3', label: 'Evening hub bank', start: '18:00', end: '20:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '10–20 min', carriers: 'American, United, Alaska', note: 'Comfort and Black requests from corporate riders.' },
-      { id: 'b4', label: 'Last West Coast bank', start: '22:30', end: '00:45', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '5–15 min', carriers: 'United, Alaska, American', note: 'Tired travelers, little price sensitivity.' },
+      { id: 'b1', strength: 55, label: 'Morning hub bank', start: '09:00', end: '11:00', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '15–30 min', carriers: 'American, United, Alaska', note: 'Business travelers to OCCC on convention weeks.' },
+      { id: 'b2', strength: 42, label: 'Midday bank', start: '12:30', end: '14:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '20–40 min', carriers: 'American, United', note: 'Steady but slow. Stay only if the lot is under 80 cars.' },
+      { id: 'b3', strength: 62, label: 'Evening hub bank', start: '18:00', end: '20:30', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '10–20 min', carriers: 'American, United, Alaska', note: 'Comfort and Black requests from corporate riders.' },
+      { id: 'b4', strength: 57, label: 'Last West Coast bank', start: '22:30', end: '00:45', bay: 'Level 2', bayDetail: 'Level 2 outer curb, B-side ride-app zone', queueWait: '5–15 min', carriers: 'United, Alaska, American', note: 'Tired travelers, little price sensitivity.' },
     ],
   },
   {
@@ -56,10 +58,10 @@ export const TERMINALS: Terminal[] = [
     lat: 28.4143,
     lng: -81.3009,
     banks: [
-      { id: 'c1', label: 'European morning bank', start: '10:30', end: '12:30', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '20–35 min', carriers: 'JetBlue, British Airways, Virgin Atlantic', note: 'Customs adds 45–75 min. Late-bank pings are the long-haul riders.' },
-      { id: 'c2', label: 'Afternoon international bank', start: '13:00', end: '15:00', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '15–30 min', carriers: 'Lufthansa, Aer Lingus, Latin American carriers', note: 'Heavy luggage. XL and Comfort pay off here.' },
-      { id: 'c3', label: 'Evening JetBlue bank', start: '18:00', end: '21:00', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '10–20 min', carriers: 'JetBlue, Southwest overflow, international', note: 'Biggest C wave. Universal and Epic hotel runs.' },
-      { id: 'c4', label: 'Late arrivals', start: '22:30', end: '00:30', bay: 'Level 2', bayDetail: 'Level 2 overflow curb (when Level 6 is coned off)', queueWait: '5–15 min', carriers: 'JetBlue, Caribbean routes', note: 'Watch for overflow signage. The pickup pin may move.' },
+      { id: 'c1', strength: 52, label: 'European morning bank', start: '10:30', end: '12:30', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '20–35 min', carriers: 'JetBlue, British Airways, Virgin Atlantic', note: 'Customs adds 45–75 min. Late-bank pings are the long-haul riders.' },
+      { id: 'c2', strength: 54, label: 'Afternoon international bank', start: '13:00', end: '15:00', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '15–30 min', carriers: 'Lufthansa, Aer Lingus, Latin American carriers', note: 'Heavy luggage. XL and Comfort pay off here.' },
+      { id: 'c3', strength: 63, label: 'Evening JetBlue bank', start: '18:00', end: '21:00', bay: 'Level 6', bayDetail: 'Level 6 GTC ride-app pickup', queueWait: '10–20 min', carriers: 'JetBlue, Southwest overflow, international', note: 'Biggest C wave. Universal and Epic hotel runs.' },
+      { id: 'c4', strength: 50, label: 'Late arrivals', start: '22:30', end: '00:30', bay: 'Level 2', bayDetail: 'Level 2 overflow curb (when Level 6 is coned off)', queueWait: '5–15 min', carriers: 'JetBlue, Caribbean routes', note: 'Watch for overflow signage. The pickup pin may move.' },
     ],
   },
 ];
@@ -86,11 +88,13 @@ export interface ParkEgress {
   lat: number;
   lng: number;
   tips: string[];
+  strength: number;
 }
 
 export const PARKS: ParkEgress[] = [
   {
     id: 'mk',
+    strength: 78,
     park: 'Magic Kingdom',
     hubId: 'disney-ttc',
     close: '22:00',
@@ -108,6 +112,7 @@ export const PARKS: ParkEgress[] = [
   },
   {
     id: 'epcot',
+    strength: 68,
     park: 'EPCOT',
     hubId: 'epcot',
     close: '21:00',
@@ -125,6 +130,7 @@ export const PARKS: ParkEgress[] = [
   },
   {
     id: 'hs',
+    strength: 62,
     park: 'Disney Hollywood Studios',
     hubId: 'epcot',
     close: '21:00',
@@ -142,6 +148,7 @@ export const PARKS: ParkEgress[] = [
   },
   {
     id: 'usf',
+    strength: 66,
     park: 'Universal Studios & CityWalk',
     hubId: 'citywalk',
     close: '21:00',
@@ -159,80 +166,26 @@ export const PARKS: ParkEgress[] = [
   },
 ];
 
-export interface ShiftStep {
-  start: string;
-  end: string;
+export interface RecurringWindow {
+  id: string;
   title: string;
   hubId: string;
-  detail: string;
+  start: string;
+  end: string;
+  strength: number;
+  /** Weekdays (0 = Sun) the window starts on. Omit for every day. */
+  days?: number[];
+  /** Only counts on dates with a convention in the weekly guide. */
+  needsConvention?: boolean;
+  note: string;
 }
 
-export interface ShiftBlueprint {
-  id: string;
-  name: string;
-  tagline: string;
-  hours: number;
-  baseGross: number; // UberX baseline gross for the whole shift
-  steps: ShiftStep[];
-}
-
-export const VEHICLE_TIERS = [
-  { id: 'x', label: 'UberX', mult: 1.0 },
-  { id: 'comfort', label: 'Comfort', mult: 1.22 },
-  { id: 'xl', label: 'UberXL', mult: 1.42 },
-  { id: 'black', label: 'Premier / Black', mult: 1.78 },
-] as const;
-export type VehicleTierId = (typeof VEHICLE_TIERS)[number]['id'];
-
-export const SHIFTS: ShiftBlueprint[] = [
-  {
-    id: 'exec',
-    name: 'Executive Airport & Convention Peak',
-    tagline: 'Business travelers, OCCC show traffic, corporate hotel runs.',
-    hours: 9,
-    baseGross: 285,
-    steps: [
-      { start: '06:30', end: '09:00', title: 'OCCC inbound rush', hubId: 'occc-ns', detail: 'I-Drive hotels to the convention center. Short trips, fast cycles.' },
-      { start: '09:00', end: '11:30', title: 'MCO morning bank', hubId: 'mco-ab', detail: 'Drop near the airport, join the waiting lot, take A/B morning arrivals.' },
-      { start: '11:30', end: '13:00', title: 'Reposition & break', hubId: 'occc-west', detail: 'Eat and charge. Head back toward I-Drive by 12:45.' },
-      { start: '13:00', end: '15:30', title: 'Terminal C international', hubId: 'mco-c', detail: 'Long-haul arrivals with luggage. Comfort/XL premiums.' },
-      { start: '15:30', end: '16:30', title: 'Stage for show close', hubId: 'occc-west', detail: 'Wait near Pointe Orlando. Move into the West Concourse lane at 4:20.' },
-      { start: '16:30', end: '18:30', title: 'Convention exit wave', hubId: 'occc-west', detail: 'Attendees to MCO and hotels. Chain airport runs into the evening bank.' },
-    ],
-  },
-  {
-    id: 'parks',
-    name: 'Theme Park Fireworks & Nightlife Surge',
-    tagline: 'Park closings, fireworks egress, Disney Springs and CityWalk.',
-    hours: 8,
-    baseGross: 260,
-    steps: [
-      { start: '16:00', end: '18:00', title: 'Hotel-to-dinner drops', hubId: 'disney-springs', detail: 'Lake Buena Vista hotels to Disney Springs and I-Drive restaurants.' },
-      { start: '18:00', end: '20:30', title: 'MCO evening bank', hubId: 'mco-ab', detail: 'Arrivals to Disney resorts put you on the west side for close.' },
-      { start: '20:30', end: '21:30', title: 'EPCOT / Studios close', hubId: 'epcot', detail: 'Stage at the EPCOT front lot. Take the first show-exit pings.' },
-      { start: '21:30', end: '23:00', title: 'Magic Kingdom fireworks egress', hubId: 'disney-ttc', detail: 'TTC wave peaks 30–45 min after fireworks. Highest surge of the night.' },
-      { start: '23:00', end: '00:00', title: 'Disney Springs late', hubId: 'disney-springs', detail: 'Late dinner crowd heading to Kissimmee and I-Drive hotels.' },
-    ],
-  },
-  {
-    id: 'late',
-    name: 'Weekend Late Night Surge Hunter',
-    tagline: 'Arena let-outs, bar close downtown, CityWalk, late MCO.',
-    hours: 7,
-    baseGross: 245,
-    steps: [
-      { start: '20:00', end: '21:30', title: 'Pre-event & dinner drops', hubId: 'downtown', detail: 'Restaurants and hotels into Downtown and the Kia Center.' },
-      { start: '21:30', end: '23:30', title: 'Arena let-out', hubId: 'kia', detail: 'Stage on Garland Ave. Accept pings west of the arena when police close Church St.' },
-      { start: '23:30', end: '00:45', title: 'Late MCO bank', hubId: 'mco-ab', detail: 'Short airport queue, long fares to the tourist corridor.' },
-      { start: '00:45', end: '02:00', title: 'CityWalk bar close', hubId: 'citywalk', detail: 'CityWalk clubs empty 1:30–2a. Garage ride-share level.' },
-      { start: '02:00', end: '03:00', title: 'Downtown bar close', hubId: 'downtown', detail: 'Orange Ave floods at 2a. Grab a ping by 2:15 or stage on Magnolia Ave.' },
-    ],
-  },
+export const RECURRING: RecurringWindow[] = [
+  { id: 'epic-close', title: 'Epic Universe closing', hubId: 'epic', start: '20:30', end: '22:30', strength: 64, note: 'Park close exit wave. Approach from Sand Lake Rd, not Destination Pkwy.' },
+  { id: 'springs-night', title: 'Disney Springs dinner crowd', hubId: 'disney-springs', start: '21:00', end: '23:30', strength: 46, note: 'Steady short trips to Lake Buena Vista hotels. Good filler between waves.' },
+  { id: 'citywalk-bars', title: 'CityWalk bar close', hubId: 'citywalk', start: '01:00', end: '02:30', strength: 60, days: [6, 0], note: 'Clubs empty 1:30–2a on Friday and Saturday nights.' },
+  { id: 'downtown-bars', title: 'Downtown bar close', hubId: 'downtown', start: '01:15', end: '02:45', strength: 70, days: [6, 0], note: 'Orange Ave floods at 2a. Stage on Magnolia Ave and grab a ping by 2:15.' },
+  { id: 'downtown-evening', title: 'Downtown nightlife build-up', hubId: 'downtown', start: '22:00', end: '00:30', strength: 50, days: [5, 6], note: 'Drop-offs into Church St and Wall St. Short trips, steady volume.' },
+  { id: 'occc-morning', title: 'Convention morning inbound', hubId: 'occc-ns', start: '07:00', end: '09:00', strength: 58, needsConvention: true, note: 'I-Drive hotels to the convention center. Fast, short cycles.' },
+  { id: 'occc-close', title: 'Convention show close', hubId: 'occc-west', start: '16:30', end: '18:30', strength: 66, needsConvention: true, note: 'Attendees to MCO and hotels. Chain the airport runs into the evening bank.' },
 ];
-
-export function shiftEarnings(shift: ShiftBlueprint, tierMult: number, costs: number) {
-  const gross = Math.round(shift.baseGross * tierMult);
-  const net = Math.round(gross - Math.max(0, costs));
-  const perHour = shift.hours > 0 ? net / shift.hours : 0;
-  return { gross, net, perHour };
-}
