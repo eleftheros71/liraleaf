@@ -24,7 +24,20 @@ npm run build
 npm start               # serves dist/ and the API on PORT (default 3000)
 ```
 
-To install on your phone, the app has to be served over HTTPS (any Node host works: Render, Railway, Fly.io, a VPS). Open it in Safari or Chrome and choose **Add to Home Screen**.
+## Hosting on Render (free)
+
+The repo root has a `render.yaml` Blueprint.
+
+1. Sign in at render.com with GitHub and give it access to this repo.
+2. **New → Blueprint**, pick the repo and the branch that has the app.
+3. Render asks for two secrets:
+   - `GEMINI_API_KEY`: your key from Google AI Studio.
+   - `APP_ACCESS_CODE`: any passphrase. You'll type the same one in the app under **Settings → Server access code**.
+4. Wait for the first deploy (a few minutes). Open the `https://….onrender.com` address.
+5. Check `https://….onrender.com/api/health`: `"gemini": true` means the key is set.
+6. On your phone, open the address in Safari (iPhone) or Chrome (Android) and choose **Add to Home Screen**.
+
+The free plan sleeps after about 15 minutes without visits. The installed app still opens instantly from its offline cache; only the first research call after a nap waits up to a minute while the server wakes.
 
 ## Gemini on the free plan
 

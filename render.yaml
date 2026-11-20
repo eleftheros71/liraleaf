@@ -1,0 +1,21 @@
+# Render Blueprint for Orlando Driver Hub (the app lives in orlando-driver-hub/).
+# New > Blueprint in the Render dashboard, pick this repo, then fill the secret values when asked.
+services:
+  - type: web
+    name: orlando-driver-hub
+    runtime: node
+    plan: free
+    rootDir: orlando-driver-hub
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APP_ACCESS_CODE
+        sync: false
+      - key: GEMINI_MODELS
+        value: gemini-3.1-pro-preview,gemini-3-flash-preview,gemini-2.5-flash
