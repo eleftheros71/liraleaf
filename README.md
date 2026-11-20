@@ -53,3 +53,9 @@ The following need a backend or a paid model:
 - accounts and sync
 - reminders while the app is closed: currently it notifies when opened or while running. Chrome on Android's periodic background sync could cover this without a server; this is not built yet.
 - a large plant catalogue (only 16 species are built in)
+
+---
+
+## Also in this repo
+
+`orlando-driver-hub/` holds a separate app, Orlando Driver Hub (React + Express + Gemini). See its own README.

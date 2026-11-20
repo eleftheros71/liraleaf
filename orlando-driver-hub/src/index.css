@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --color-canvas: #0B0F17;
+  --color-panel: #111827;
+  --color-amber: #F59E0B;
+  --color-emerald: #10B981;
+  --color-crimson: #EF4444;
+}
+
+html, body, #root { min-height: 100%; }
+body {
+  background: var(--color-canvas);
+  color: #E5E7EB;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.8); }
+::selection { background: rgba(245, 158, 11, 0.35); }

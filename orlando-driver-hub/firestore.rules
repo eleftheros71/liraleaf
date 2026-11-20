@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// Orlando Driver Hub: single-owner data only.
+// users/{uid}                   profile
+// users/{uid}/guides/guide_{d}  cached weekly guide
+// Everything else (chat, feeds, community) is denied.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    function validCorridors(c) {
+      return c is list && c.size() >= 1 && c.size() <= 5
+        && c.hasOnly(['OCCC', 'Disney', 'Universal', 'Sports/Concerts', 'Other']);
+    }
+
+    function validProfile(d) {
+      return d.keys().hasAll(['displayName', 'email', 'corridors', 'createdAt', 'updatedAt'])
+        && d.keys().hasOnly(['displayName', 'email', 'corridors', 'createdAt', 'updatedAt'])
+        && d.displayName is string && d.displayName.size() <= 120
+        && d.email is string && d.email.size() <= 200
+        && validCorridors(d.corridors)
+        && d.createdAt is timestamp
+        && d.updatedAt == request.time;
+    }
+
+    function validGuide(d, uid, guideId) {
+      return d.keys().hasAll(['ownerUid', 'weekOf', 'corridors', 'guideJson', 'sources', 'createdAt'])
+        && d.keys().hasOnly(['ownerUid', 'weekOf', 'corridors', 'guideJson', 'sources', 'createdAt'])
+        && d.ownerUid == uid
+        && d.weekOf is string && d.weekOf.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && guideId == 'guide_' + d.weekOf
+        && validCorridors(d.corridors)
+        && d.guideJson is string && d.guideJson.size() > 2 && d.guideJson.size() < 900000
+        && d.sources is list && d.sources.size() <= 60
+        && d.createdAt == request.time;
+    }
+
+    match /users/{uid} {
+      allow get, delete: if isOwner(uid);
+      allow list: if false;
+      allow create: if isOwner(uid) && validProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time;
+      allow update: if isOwner(uid) && validProfile(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt;
+
+      match /guides/{guideId} {
+        allow get, delete: if isOwner(uid);
+        allow list: if false;
+        allow create, update: if isOwner(uid) && validGuide(request.resource.data, uid, guideId);
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
